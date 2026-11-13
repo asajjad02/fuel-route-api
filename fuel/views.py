@@ -26,9 +26,8 @@ class RouteMapView(APIView):
     template_name = 'fuel/map.html'
 
     def get(self, request):
-        return Response(
-            {'trip': TripSerializer(plan_trip(**_validated(request.query_params))).data}
-        )
+        params = _validated(request.query_params)
+        return Response({'trip': TripSerializer(plan_trip(**params)).data, **params})
 
 
 def _validated(data):

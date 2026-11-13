@@ -28,7 +28,7 @@ python manage.py runserver
 
 Then open http://127.0.0.1:8000/api/route/map/?start=Atlanta,+GA&finish=Phoenix,+AZ
 
-Optional: `python manage.py test` (54 tests), `pip install ruff && ruff check .`, `python manage.py createsuperuser` to browse stations at `/admin/`.
+Optional: `python manage.py test` (55 tests), `pip install ruff && ruff check .`, `python manage.py createsuperuser` to browse stations at `/admin/`.
 
 | Setting in `.env` | Default | Purpose |
 |---|---|---|
@@ -148,31 +148,38 @@ Following `POST /api/route/` through the code:
 
 ## The fuel planner
 
-At each station, the planner looks at every station it could reach on a full tank (500 miles) and applies one of two rules:
+At each station, the planner looks at every station it could reach on a full tank (500 miles). Every case, in `fuel/services/planner.py`:
 
-- **A cheaper station is in reach:** buy just enough fuel to get there.
-- **Nothing cheaper is in reach:** this is the best price for the next 500 miles, so fill the tank and drive to the cheapest station in reach.
+| Case | What it does | Lines |
+|---|---|---|
+| No station in reach | The trip is impossible: 422 error | 61–63 |
+| A station at least 5¢ cheaper is in reach | Buy just enough to reach the nearest one, skipping pricier stations on the way | 65–67 |
+| Nothing cheaper is in reach | This is the best price for the next 500 miles: fill the tank and head to the cheapest station in reach | 68–72 |
+| The tank already has fuel | Buy only what is missing, or nothing | 74–75 |
+| The finish is in reach | The finish counts as a free station, so buy just enough to finish | 54 |
 
-The finish counts as a free station, so the plan never buys fuel it doesn't need: the gallons always equal miles ÷ 10.
+The tank starts empty, so the drive to the first station is charged at that station's price. Together these make the gallons always equal miles ÷ 10.
 
-### Why "just enough" matters: local lows
+### Worked example
 
-A simple rule like "fill up whenever the price is lower than the last station" gets caught by a *local* low: a station that is cheaper than its neighbours but not the cheapest within reach.
-
-An 800-mile trip with three stations:
+A 1,000-mile trip:
 
 | Station | Mile | Price |
 |---|---|---|
-| A | 0 | $3.20 |
-| B | 100 | $3.00 |
-| C | 350 | $2.60 |
+| A | 0 | $3.00 |
+| B | 150 | $3.20 |
+| C | 300 | $3.40 |
+| D | 450 | $2.80 |
+| E | 700 | $3.10 |
 
-| | At A | At B | At C | Total |
+| At | Tank on arrival | Case | Buys | Cost |
 |---|---|---|---|---|
-| Fill up at the local low B | 10 gal | **50 gal** at $3.00 | 20 gal | $234.00 |
-| This planner | 10 gal | **25 gal**, just enough to reach C | 45 gal at $2.60 | **$224.00** |
+| A | empty | D is cheaper and in reach: just enough to reach D, skipping B and C | 45 gal | $135.00 |
+| D | empty | Nothing cheaper in reach, finish not in reach: fill up, head to E | 50 gal | $140.00 |
+| E | 250 miles | Finish in reach: only the 5 gallons still missing | 5 gal | $15.50 |
+| | | | **100 gal** | **$290.50** |
 
-At B the planner sees C within reach and cheaper, so it buys only what gets it to C. This example is a test (`test_readme_example_does_not_fill_up_at_a_local_low`).
+This example is a test (`test_readme_example_covers_every_case`).
 
 ### Minimum saving
 

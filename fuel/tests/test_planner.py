@@ -16,7 +16,23 @@ def purchases(plan):
 
 
 class PlanFuelStopsTests(SimpleTestCase):
-    def test_readme_example_does_not_fill_up_at_a_local_low(self):
+    def test_readme_example_covers_every_case(self):
+        # A: D is cheaper and in reach, skip B and C. D: nothing cheaper, fill up and go to E.
+        # E: arrives with 250 miles left, buys only the 5 gallons needed to finish.
+        stations = [
+            station(0, 3.00),
+            station(150, 3.20),
+            station(300, 3.40),
+            station(450, 2.80),
+            station(700, 3.10),
+        ]
+
+        plan = plan_fuel_stops(stations, total_miles=1000)
+
+        self.assertEqual(purchases(plan), [(0, 45), (450, 50), (700, 5)])
+        self.assertAlmostEqual(plan.total_cost, 290.50)
+
+    def test_does_not_fill_up_at_a_local_low(self):
         # B is cheaper than A, but C (in reach of B) is cheaper still: filling up at B would
         # cost $234; buying just enough to reach C costs $224.
         stations = [station(0, 3.20), station(100, 3.00), station(350, 2.60)]
