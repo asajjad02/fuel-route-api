@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Route Error</title>
+</head>
+<body style="font: 16px system-ui, sans-serif; padding: 24px; background: #fff; color: #111;">
+  {# DRF passes the error body as context: `detail`, or per-field lists for validation errors. #}
+  <h1>Error {{ status_code }}</h1>
+  {% if detail %}<p>{{ detail }}</p>{% endif %}
+  {% if start %}<p>start: {{ start|join:" " }}</p>{% endif %}
+  {% if finish %}<p>finish: {{ finish|join:" " }}</p>{% endif %}
+</body>
+</html>

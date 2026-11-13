@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fuel Route</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    body { margin: 0; height: 100vh; display: flex; font: 14px/1.4 system-ui, sans-serif; color: #111; background: #fff; }
+    aside { width: 340px; overflow-y: auto; padding: 16px; box-sizing: border-box; border-right: 1px solid #ddd; }
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    ol { padding-left: 20px; }
+    li { margin-bottom: 10px; }
+    .muted { color: #555; }
+    #map { flex: 1; }
+    @media (max-width: 700px) {
+      body { flex-direction: column; }
+      aside { width: auto; height: 40vh; border-right: 0; border-bottom: 1px solid #ddd; }
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <h1>Fuel plan</h1>
+    <p>
+      {{ trip.distance_miles }} mi &middot; {{ trip.total_gallons }} gal &middot;
+      {{ trip.fuel_stop_count }} stop{{ trip.fuel_stop_count|pluralize }} &middot;
+      <strong>${{ trip.total_cost }}</strong>
+    </p>
+    <p class="muted">Start tank: {{ trip.initial_gallons }} gal (${{ trip.initial_cost }}) to reach the first station.</p>
+    <ol>
+      {% for stop in trip.fuel_stops %}
+        <li>
+          <strong>{{ stop.station.name }}</strong><br>
+          <span class="muted">{{ stop.station.city }}, {{ stop.station.state }} &middot; mile {{ stop.mile }}</span><br>
+          {{ stop.gallons }} gal @ ${{ stop.price_per_gallon }} = ${{ stop.cost }}
+        </li>
+      {% endfor %}
+    </ol>
+  </aside>
+  <div id="map"></div>
+
+  {{ trip.map|json_script:"trip-map" }}
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const COLORS = { route: '#2563eb', fuel_stop: '#dc2626', start: '#16a34a', finish: '#111' };
+    const map = L.map('map');
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      // OSM's tile policy requires a Referer; Django's default same-origin policy strips it.
+      referrerPolicy: 'strict-origin-when-cross-origin',
+    }).addTo(map);
+    const layer = L.geoJSON(JSON.parse(document.getElementById('trip-map').textContent), {
+      style: (feature) => ({ color: COLORS[feature.properties.role], weight: 4, fillOpacity: 0.9 }),
+      pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: 7 }),
+      onEachFeature: (feature, marker) => {
+        // Text node, not HTML: station names come from the data file.
+        if (feature.properties.label) marker.bindTooltip(document.createTextNode(feature.properties.label));
+      },
+    }).addTo(map);
+    map.fitBounds(layer.getBounds());
+  </script>
+</body>
+</html>
